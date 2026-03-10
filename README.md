@@ -4,8 +4,33 @@ Parse database information from environment variables.
 
 ## Installation
 
+### Cargo
+
 ```bash
 cargo install --path .
+```
+
+### Nix
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    db.url = "github:mikojs/db";
+  };
+
+  outputs = { nixpkgs, db, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      ...
+      modules = [
+        ({ pkgs, ... }: {
+          nixpkgs.overlays = [ db.overlays.default ];
+          environment.systemPackages = [ pkgs.db ];
+        })
+      ];
+    };
+  };
+}
 ```
 
 ## Usage
