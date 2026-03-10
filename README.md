@@ -72,5 +72,5 @@ vim.lsp.enable("sqls")
 Generate shell completion scripts:
 
 ```bash
-coder --generate <bash|zsh|fish> > shell init script
+db --generate <bash|zsh|fish> > shell init script
 ```
