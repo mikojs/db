@@ -25,19 +25,19 @@
         { pkgs, self', ... }:
         {
           packages = {
-            db = pkgs.rustPlatform.buildRustPackage {
+            miko-db = pkgs.rustPlatform.buildRustPackage {
               pname = "db";
               version = "0.1.0";
               src = ./.;
               cargoLock.lockFile = ./Cargo.lock;
             };
 
-            default = self'.packages.db;
+            default = self'.packages.miko-db;
           };
         };
 
       flake.overlays.default = final: prev: {
-        db = self.packages.${final.system}.db;
+        miko-db = self.packages.${final.system}.miko-db;
       };
     };
 }
