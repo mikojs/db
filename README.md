@@ -49,6 +49,24 @@ Output:
 ]
 ```
 
+Add this to your nvim config:
+
+```lua
+local db_sqls_command = io.popen("db sqls")
+local connections = vim.json.decode(db_sqls_command:read("*a"))
+
+db_sqls_command:close()
+vim.lsp.config("sqls", {
+  capabilities = capabilities,
+  settings = {
+    sqls = {
+      connections = connections,
+    },
+  },
+})
+vim.lsp.enable("sqls")
+```
+
 ## Shell Completion
 
 Generate shell completion scripts:
