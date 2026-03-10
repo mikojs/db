@@ -15,7 +15,7 @@ pub enum SqlsError {
     UrlNotFound,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SqlsDbConfig {
     driver: DbType,
@@ -64,6 +64,77 @@ impl Sqls {
         let sqls_config: SqlsConfig = config.try_into()?;
 
         println!("{}", serde_json::to_string_pretty(&sqls_config)?);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use url::Url;
+
+    #[test]
+    fn test_sqls_db_config_from_db_config_postgresql() -> Result<(), SqlsError> {
+        let db_config = DbConfig {
+            name: "test".to_string(),
+            url: Some(Url::parse("postgresql://localhost/test").unwrap()),
+            r#type: None,
+            description: None,
+        };
+        let sqls_config: SqlsDbConfig = db_config.try_into()?;
+
+        assert_eq!(sqls_config.driver, DbType::Postgresql);
+        assert_eq!(sqls_config.data_source_name, "postgresql://localhost/test");
+        assert_eq!(
+            serde_json::to_string(&sqls_config)?,
+            "{\"driver\":\"postgresql\",\"dataSourceName\":\"postgresql://localhost/test\"}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_sqls_db_config_from_db_config_sqlite() -> Result<(), SqlsError> {
+        let db_config = DbConfig {
+            name: "sqlite".to_string(),
+            url: Some(Url::parse("file:test.db").unwrap()),
+            r#type: Some(DbType::Sqlite),
+            description: None,
+        };
+        let sqls_config: SqlsDbConfig = db_config.try_into()?;
+
+        assert_eq!(sqls_config.driver, DbType::Sqlite);
+        assert_eq!(sqls_config.data_source_name, "file:///test.db");
+        Ok(())
+    }
+
+    #[test]
+    fn test_sqls_db_config_no_url_error() {
+        let db_config = DbConfig {
+            name: "test".to_string(),
+            url: None,
+            r#type: Some(DbType::Postgresql),
+            description: None,
+        };
+        let result: Result<SqlsDbConfig, SqlsError> = db_config.try_into();
+
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SqlsError::UrlNotFound));
+    }
+
+    #[test]
+    fn test_sqls_config_from_config_skips_no_url() -> Result<(), SqlsError> {
+        env::set_var("DB_SQLSTEST_URL", "postgresql://localhost/test");
+        env::set_var("DB_SQLSTEST_TYPE", "postgresql");
+
+        let config = Config::new()?;
+        let sqls_config: SqlsConfig = config.try_into()?;
+        let has_valid = sqls_config
+            .0
+            .iter()
+            .any(|c| c.data_source_name == "postgresql://localhost/test");
+
+        assert!(has_valid);
         Ok(())
     }
 }

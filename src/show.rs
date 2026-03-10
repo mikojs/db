@@ -69,14 +69,70 @@ impl Args for Show {
 }
 
 impl Show {
-    pub fn run(&self) -> Result<(), ShowError> {
+    fn path(&self) -> Result<String, ShowError> {
         let url = self.db_config.url.as_ref().ok_or(ShowError::NotFound)?;
 
-        if url.scheme() == "file" {
-            println!("{}", url.path());
+        Ok(if url.scheme() == "file" {
+            url.path().to_string()
         } else {
-            println!("{}", url);
-        }
+            url.to_string()
+        })
+    }
+
+    pub fn run(&self) -> Result<(), ShowError> {
+        println!("{}", self.path()?);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use url::Url;
+
+    #[test]
+    fn test_show_run_postgresql() -> Result<(), ShowError> {
+        let show = Show {
+            db_config: DbConfig {
+                name: "test".to_string(),
+                url: Some(Url::parse("postgresql://localhost/test").unwrap()),
+                r#type: None,
+                description: None,
+            },
+        };
+
+        assert_eq!(show.path()?, "postgresql://localhost/test");
+        Ok(())
+    }
+
+    #[test]
+    fn test_show_run_sqlite_file() -> Result<(), ShowError> {
+        let show = Show {
+            db_config: DbConfig {
+                name: "sqlite".to_string(),
+                url: Some(Url::parse("file:test.db").unwrap()),
+                r#type: None,
+                description: None,
+            },
+        };
+
+        assert_eq!(show.path()?, "/test.db");
+        Ok(())
+    }
+
+    #[test]
+    fn test_show_run_no_url_error() {
+        let show = Show {
+            db_config: DbConfig {
+                name: "test".to_string(),
+                url: None,
+                r#type: None,
+                description: None,
+            },
+        };
+        let result = show.run();
+
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ShowError::NotFound));
     }
 }
