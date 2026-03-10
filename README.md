@@ -1,4 +1,4 @@
-# db
+# DB
 
 Parse database information from environment variables.
 
