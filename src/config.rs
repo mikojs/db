@@ -89,43 +89,131 @@ impl Config {
 }
 
 #[cfg(test)]
-const DB_DEFAULT_URL: &str = "postgresql://postgres:postgres@localhost/postgres";
-#[cfg(test)]
-const DB_SQLITE_URL: &str = "file:foo.db";
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
 
-#[cfg(test)]
-use std::collections::HashMap;
+    const DB_DEFAULT_URL: &str = "postgresql://postgres:postgres@localhost/postgres";
+    const DB_SQLITE_URL: &str = "file:foo.db";
 
-#[test]
-fn get_config() -> Result<(), ConfigError> {
-    env::set_var("DB_DEFAULT_URL", DB_DEFAULT_URL);
-    env::set_var("DB_TEST_TEST_URL", DB_DEFAULT_URL);
-    env::set_var("DB_TEST_TEST_TYPE", "postgresql");
-    env::set_var("DB_TEST_TEST_DESCRIPTION", "description");
-    env::set_var("DB_SQLITE_URL", DB_SQLITE_URL);
-    env::set_var("DB_SQLITE_TYPE", "sqlite3");
-    env::set_var("DB_EMPTY_URL", "");
+    #[test]
+    fn test_update_db_config_with_url() -> Result<(), ConfigError> {
+        let mut config = DbConfig::default();
 
-    let mut tested_config = HashMap::new();
-
-    for config in Config::new()?.list() {
-        tested_config.insert(config.name.clone(), true);
-        match config.name.as_str() {
-            "default" => assert_eq!(config.url, Some(Url::parse(DB_DEFAULT_URL)?)),
-            "test-test" => {
-                assert_eq!(config.url, Some(Url::parse(DB_DEFAULT_URL)?));
-                assert_eq!(config.r#type, Some(DbType::Postgresql));
-                assert_eq!(config.description, Some("description".to_string()));
-            }
-            "sqlite" => {
-                assert_eq!(config.url, Some(Url::parse(DB_SQLITE_URL)?));
-                assert_eq!(config.r#type, Some(DbType::Sqlite));
-            }
-            _ => unreachable!("unknown config name {}", config.name),
-        }
+        Config::update_db_config_with_type(
+            &mut config,
+            "URL".to_string(),
+            DB_DEFAULT_URL.to_string(),
+        )?;
+        assert_eq!(config.url, Some(Url::parse(DB_DEFAULT_URL)?));
+        Ok(())
     }
 
-    assert_eq!(tested_config.len(), 3);
+    #[test]
+    fn test_update_db_config_with_type() -> Result<(), ConfigError> {
+        let mut config = DbConfig::default();
 
-    Ok(())
+        Config::update_db_config_with_type(
+            &mut config,
+            "TYPE".to_string(),
+            "postgresql".to_string(),
+        )?;
+        assert_eq!(config.r#type, Some(DbType::Postgresql));
+        Ok(())
+    }
+
+    #[test]
+    fn test_update_db_config_with_description() -> Result<(), ConfigError> {
+        let mut config = DbConfig::default();
+
+        Config::update_db_config_with_type(
+            &mut config,
+            "DESCRIPTION".to_string(),
+            "test description".to_string(),
+        )?;
+        assert_eq!(config.description, Some("test description".to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_update_db_config_invalid_url() {
+        let mut config = DbConfig::default();
+        let result = Config::update_db_config_with_type(
+            &mut config,
+            "URL".to_string(),
+            "not a valid url".to_string(),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_db_config_invalid_type() {
+        let mut config = DbConfig::default();
+        let result = Config::update_db_config_with_type(
+            &mut config,
+            "TYPE".to_string(),
+            "invalid_db_type".to_string(),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn get_config() -> Result<(), ConfigError> {
+        env::set_var("DB_DEFAULT_URL", DB_DEFAULT_URL);
+        env::set_var("DB_TEST_TEST_URL", DB_DEFAULT_URL);
+        env::set_var("DB_TEST_TEST_TYPE", "postgresql");
+        env::set_var("DB_TEST_TEST_DESCRIPTION", "description");
+        env::set_var("DB_SQLITE_URL", DB_SQLITE_URL);
+        env::set_var("DB_SQLITE_TYPE", "sqlite3");
+        env::set_var("DB_EMPTY_URL", "");
+
+        let mut tested_config = HashMap::new();
+
+        for config in Config::new()?.list() {
+            tested_config.insert(config.name.clone(), true);
+            match config.name.as_str() {
+                "default" => assert_eq!(config.url, Some(Url::parse(DB_DEFAULT_URL)?)),
+                "test-test" => {
+                    assert_eq!(config.url, Some(Url::parse(DB_DEFAULT_URL)?));
+                    assert_eq!(config.r#type, Some(DbType::Postgresql));
+                    assert_eq!(config.description, Some("description".to_string()));
+                }
+                "sqlite" => {
+                    assert_eq!(config.url, Some(Url::parse(DB_SQLITE_URL)?));
+                    assert_eq!(config.r#type, Some(DbType::Sqlite));
+                }
+                _ => {}
+            }
+        }
+
+        assert!(tested_config.len() >= 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_name_underscore_to_hyphen() -> Result<(), ConfigError> {
+        env::set_var("DB_MY_DATABASE_NAME_URL", "postgresql://localhost/test");
+
+        let config = Config::new()?;
+        let db = config
+            .list()
+            .into_iter()
+            .find(|c| c.name == "my-database-name");
+
+        assert!(db.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn test_name_lowercase() -> Result<(), ConfigError> {
+        env::set_var("DB_UPPERCASE_URL", "postgresql://localhost/test");
+
+        let config = Config::new()?;
+        let db = config.list().into_iter().find(|c| c.name == "uppercase");
+
+        assert!(db.is_some());
+        Ok(())
+    }
 }
