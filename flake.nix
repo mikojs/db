@@ -37,7 +37,7 @@
         };
 
       flake.overlays.default = final: prev: {
-        miko-db = self.packages.${final.system}.miko-db;
+        miko-db = self.packages.${final.stdenv.hostPlatform.system}.miko-db;
       };
     };
 }
