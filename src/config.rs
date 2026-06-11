@@ -66,6 +66,7 @@ impl Config {
             };
         }
 
+        db_configs.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(Self(db_configs))
     }
 
